@@ -89,6 +89,7 @@ async def enqueue_image_generation(
     prompt: str,
     dialog_id: int | None = None,
     girl_id: int | None = None,
+    negative_prompt: str | None = None,
 ) -> str:
     """
     Добавляет задачу генерации изображения в очередь.
@@ -98,20 +99,26 @@ async def enqueue_image_generation(
         prompt: Промпт для генерации
         dialog_id: ID диалога (опционально)
         girl_id: ID персонажа (опционально)
+        negative_prompt: Негативный промпт (опционально)
     
     Returns:
         ID задачи
     """
     await queue_service.connect()
     
+    data = {
+        "prompt": prompt,
+        "dialog_id": dialog_id,
+        "girl_id": girl_id,
+    }
+    
+    if negative_prompt:
+        data["negative_prompt"] = negative_prompt
+    
     task_id = await queue_service.enqueue_task(
         TaskType.GENERATE_IMAGE,
         user_id=user_id,
-        data={
-            "prompt": prompt,
-            "dialog_id": dialog_id,
-            "girl_id": girl_id,
-        }
+        data=data
     )
     
     return task_id

@@ -143,26 +143,61 @@ def get_girl_description(girl) -> str:
 def get_girl_story_intro(girl_name: str) -> str:
     """Возвращает введение в сюжет для персонажа."""
     story_intros = {
-        "Стейси": (
-            "Ты решил зайти к Стейси, чтобы вместе разобраться с домашним заданием. "
-            "Она пригласила тебя к себе домой, и теперь вы сидите за столом с тетрадками и учебниками. "
-            "Стейси дружелюбно улыбается и готова помочь с любыми вопросами."
-        ),
-        "Аманда": (
-            "Ты решил познакомиться со своей соседкой Амандой. "
-            "Она живет напротив и часто видит тебя в подъезде. "
-            "Сегодня она попросила помочь с чем-то или просто пригласила зайти поболтать. "
-            "Ты стоишь у её двери, готовый постучать."
-        ),
-        "Джейн": (
-            "Ты приехал в деревню и решил познакомиться с местными жителями. "
-            "Джейн — хозяйственная девушка, которая живет неподалеку. "
-            "Ты видишь её во дворе, где она занимается хозяйством. "
-            "Она заметила тебя и дружелюбно помахала рукой."
-        ),
+        "Стейси": "Стейси — твоя одногруппница, 19 лет. Дружелюбная, умная и игривая девушка, всегда готова помочь с учёбой. Ты зашёл к ней разобраться с домашним заданием.",
+        "Аманда": "Аманда — твоя соседка, 32 года. Опытная и уверенная в себе разведёнка, знает чего хочет и не стесняется этого. Она пригласила тебя посидеть.",
+        "Джейн": "Джейн — хозяйственная девушка из деревни, 22 года. Рыжеволосая, простая и искренняя, любит природу и животных. Ты случайно встретил её, заблудившись в деревне.",
     }
     
-    return story_intros.get(girl_name, "Ты решил начать диалог с этим персонажем.")
+    return story_intros.get(girl_name, "Ты встречаешься с персонажем.")
+
+
+def get_insufficient_balance_message(girl_name: str, resource_type: str, current: int, needed: int) -> str:
+    """
+    Генерирует сообщение от персонажа о недостатке баланса.
+    
+    Args:
+        girl_name: Имя персонажа
+        resource_type: Тип ресурса ("diamonds" или "energy")
+        current: Текущее количество ресурса
+        needed: Необходимое количество ресурса
+    
+    Returns:
+        Сообщение от персонажа
+    """
+    if resource_type == "diamonds":
+        messages = {
+            "Стейси": (
+                f"💎 Ой, у тебя недостаточно алмазов для фото... ⏰ Наше общение проходит так незаметно, "
+                f"что я даже не заметила, как быстро пролетело время! ✨ Пополни баланс, чтобы мы могли "
+                f"продолжить и я смогла показать тебе больше 😊💕"
+            ),
+            "Аманда": (
+                f"💎 Дорогой, у тебя не хватает алмазов для фото... ⏰ Наше общение такое увлекательное, "
+                f"что время пролетает незаметно! ✨ Пополни баланс, чтобы мы могли продолжить наше общение 💋🔥"
+            ),
+            "Джейн": (
+                f"💎 Ой, у тебя маловато алмазов для фото... ⏰ Мы так хорошо общаемся, что я даже не заметила, "
+                f"как быстро время прошло! ✨ Пополни баланс, пожалуйста, чтобы мы могли продолжить 🌾💚"
+            ),
+        }
+    else:  # energy
+        messages = {
+            "Стейси": (
+                f"⚡ Ой, у тебя закончилась энергия... ⏰ Наше общение проходит так незаметно, "
+                f"что я даже не заметила, как быстро пролетело время! ✨ Пополни баланс, чтобы мы могли "
+                f"продолжить наш разговор 😊💕"
+            ),
+            "Аманда": (
+                f"⚡ Дорогой, у тебя не хватает энергии для сообщений... ⏰ Наше общение такое увлекательное, "
+                f"что время пролетает незаметно! ✨ Пополни баланс, чтобы мы могли продолжить наше общение 💋🔥"
+            ),
+            "Джейн": (
+                f"⚡ Ой, у тебя закончилась энергия... ⏰ Мы так хорошо общаемся, что я даже не заметила, "
+                f"как быстро время прошло! ✨ Пополни баланс, пожалуйста, чтобы мы могли продолжить 🌾💚"
+            ),
+        }
+    
+    return messages.get(girl_name, f"❌ Недостаточно {'алмазов' if resource_type == 'diamonds' else 'энергии'}!")
 
 
 def get_main_keyboard() -> ReplyKeyboardMarkup:
@@ -188,31 +223,31 @@ def get_dialogue_keyboard() -> ReplyKeyboardMarkup:
     return keyboard
 
 
-def build_image_prompt(girl_name: str, clothing_description: str | None = None, nudity_level: str = "none", additional_text: str | None = None) -> str:
+def build_image_prompt(girl_name: str, clothing_description: str | None = None) -> str:
     """
     Формирует промпт для генерации изображения на основе персонажа.
     
     Args:
         girl_name: Имя персонажа
-        clothing_description: Описание постоянной одежды персонажа (используется только если nudity_level == "none")
-        nudity_level: Уровень обнажения (none/undressing/partial/full)
-        additional_text: Дополнительный текст для промпта
+        clothing_description: Описание постоянной одежды персонажа
     """
-    base_prompts = {
-        "Стейси": "1girl, 19 years old, blonde hair, blue eyes, student, cute, friendly, anime style, soft light, beautiful, detailed, bedroom setting, masterpiece, best quality, detailed lighting, soft shadows, bedroom interior, cozy atmosphere, sunlight through window, warm colors, natural pose, detailed face, expressive eyes, gentle smile, soft hair, realistic fabric, depth of field",
-        "Аманда": "1girl, 32 years old, mature woman, milf, confident, elegant, anime style, dark hair, long dark hair, soft light, beautiful, detailed, apartment living room, cozy atmosphere, sunlight through window, warm colors, natural pose, detailed face, expressive eyes, gentle smile, soft hair, realistic fabric, depth of field, masterpiece, best quality, detailed lighting, soft shadows",
-        "Джейн": "1girl, 22 years old, red hair, country girl, confident and graceful, anime style, masterpiece, best quality, soft warm light, rustic wood background, natural beauty, detailed textures, sunlight filtering through, cinematic look",
+    # Базовые характеристики персонажей: цвет волос, цвет глаз, размер груди, размер задницы
+    base_characteristics = {
+        "Стейси": "blonde hair, blue eyes, medium breasts, medium ass",
+        "Аманда": "dark hair, brown eyes, large breasts, large ass",
+        "Джейн": "red hair, green eyes, medium breasts, medium ass",
     }
     
-    prompt = base_prompts.get(girl_name, f"1girl, {girl_name}, anime style, soft light, beautiful, detailed")
+    # Начинаем промпт с (masterpiece), best quality
+    prompt = "(masterpiece), best quality"
     
-    # Добавляем описание одежды ТОЛЬКО если персонаж одет (nudity_level == "none")
-    # Если персонаж обнажен или раздевается - одежду НЕ добавляем
-    if nudity_level == "none" and clothing_description:
+    # Добавляем базовые характеристики персонажа
+    characteristics = base_characteristics.get(girl_name, "1girl, solo")
+    prompt = f"{prompt}, {characteristics}"
+    
+    # Добавляем описание одежды
+    if clothing_description:
         prompt = f"{prompt}, {clothing_description}"
-    
-    if additional_text:
-        prompt = f"{prompt}, {additional_text}"
     
     return prompt
 
@@ -328,16 +363,33 @@ async def handle_generate_image(message: Message) -> None:
     async with get_session() as session:
         # Проверяем наличие алмазов
         diamonds = await get_user_diamonds(session, user_id=message.from_user.id)
+        girl = await get_selected_girl(session, user_id=message.from_user.id)
+        if not girl:
+            girl = await get_default_girl(session)
+        
         if diamonds < settings.image_generation_cost:
-            await message.answer(
-                f"❌ Недостаточно алмазов!\n\n"
-                f"💎 У тебя: {diamonds} алмазов\n"
-                f"💰 Нужно: {settings.image_generation_cost} алмазов\n\n"
-                f"Используй /profile для просмотра профиля."
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="top_up_balance")]
+                ]
             )
+            # Сообщение от персонажа о недостатке алмазов
+            if girl:
+                message_text = get_insufficient_balance_message(
+                    girl_name=girl.name,
+                    resource_type="diamonds",
+                    current=diamonds,
+                    needed=settings.image_generation_cost
+                )
+            else:
+                message_text = (
+                    f"❌ Недостаточно алмазов!\n\n"
+                    f"💎 У тебя: {diamonds} алмазов\n"
+                    f"💰 Нужно: {settings.image_generation_cost} алмазов"
+                )
+            await message.answer(message_text, reply_markup=keyboard)
             return
         
-        girl = await get_selected_girl(session, user_id=message.from_user.id)
         if not girl:
             girl = await get_default_girl(session)
             if girl:
@@ -359,9 +411,9 @@ async def handle_generate_image(message: Message) -> None:
     prompt = build_image_prompt(
         girl_name=girl.name,
         clothing_description=girl.clothing_description,
-        nudity_level="none",  # Для команды /image всегда одет
-        additional_text=additional,
     )
+    if additional:
+        prompt = f"{prompt}, {additional}"
 
     # Устанавливаем флаг генерации
     if message.from_user:
@@ -426,13 +478,7 @@ async def handle_main_menu(message: Message) -> None:
         return
 
     async with get_session() as session:
-        # Проверяем, есть ли активный диалог, и завершаем его
-        active_dialog_id = await get_active_dialog_id(session, user_id=message.from_user.id)
-        if active_dialog_id:
-            # Завершаем диалог (устанавливаем active_dialog_id в None)
-            await set_active_dialog(session, user_id=message.from_user.id, dialog_id=None)
-            await session.commit()
-        
+        # НЕ завершаем диалог - просто показываем главное меню
         # Получаем информацию о профиле для главного меню
         diamonds = await get_user_diamonds(session, user_id=message.from_user.id)
         energy = await get_user_energy(session, user_id=message.from_user.id)
@@ -512,13 +558,7 @@ async def handle_chat_history(message: Message) -> None:
         return
 
     async with get_session() as session:
-        # Проверяем, есть ли активный диалог, и завершаем его
-        active_dialog_id = await get_active_dialog_id(session, user_id=message.from_user.id)
-        if active_dialog_id:
-            # Завершаем диалог (устанавливаем active_dialog_id в None)
-            await set_active_dialog(session, user_id=message.from_user.id, dialog_id=None)
-            await session.commit()
-        
+        # НЕ завершаем диалог - просто показываем историю
         # Получаем все диалоги пользователя, сгруппированные по персонажам
         from app.repositories.dialogs import get_dialogs_by_girls
         dialogs_by_girls = await get_dialogs_by_girls(session, user_id=message.from_user.id)
@@ -583,6 +623,9 @@ async def handle_restart_dialogue(message: Message) -> None:
         return
 
     async with get_session() as session:
+        # Сначала завершаем текущий диалог
+        await set_active_dialog(session, user_id=message.from_user.id, dialog_id=None)
+        
         girl = await get_selected_girl(session, user_id=message.from_user.id)
         if not girl:
             girl = await get_default_girl(session)
@@ -600,18 +643,49 @@ async def handle_restart_dialogue(message: Message) -> None:
         await set_active_dialog(session, user_id=message.from_user.id, dialog_id=dialog.id)
         await set_selected_girl(session, user_id=message.from_user.id, girl_id=girl.id, active_dialog_id=dialog.id)
 
-        # Добавляем приветствие
+        # Добавляем приветствие в историю
         await add_message(
             session,
             dialog_id=dialog.id,
             role="assistant",
             content=girl.greeting,
         )
+        
+        # Отслеживаем создание диалога
+        from app.repositories.retention import track_user_activity, update_user_retention
+        await update_user_retention(session, user_id=message.from_user.id)
+        await track_user_activity(session, user_id=message.from_user.id, dialogs_created=1)
+        
         await session.commit()
 
+    # Отправляем введение в сюжет и приветствие
+    story_intro = get_girl_story_intro(girl.name)
+    image_path = get_girl_image_path(girl.name)
+    
+    if image_path:
+        try:
+            photo = FSInputFile(image_path)
+            await message.answer_photo(
+                photo,
+                caption=story_intro,
+                reply_markup=get_dialogue_keyboard()
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).warning(f"Не удалось отправить фото: {exc}")
+            await message.answer(
+                story_intro,
+                reply_markup=get_dialogue_keyboard()
+            )
+    else:
+        await message.answer(
+            story_intro,
+            reply_markup=get_dialogue_keyboard()
+        )
+    
+    # Отправляем приветственное сообщение от персонажа
     await message.answer(
-        f"🔄 Диалог с {girl.name} начат заново!\n\n{girl.greeting}",
-        reply_markup=get_dialogue_keyboard(),
+        f"👋 {girl.greeting}",
+        reply_markup=get_dialogue_keyboard()
     )
 
 
@@ -695,11 +769,33 @@ async def handle_dialogue(message: Message) -> None:
         # Списываем энергию перед генерацией ответа
         energy_spent = await spend_energy(session, user_id=message.from_user.id, amount=settings.message_energy_cost)
         if not energy_spent:
-            await message.answer(
-                f"❌ Недостаточно энергии!\n\n"
-                f"⚡ Нужно: {settings.message_energy_cost} энергии\n\n"
-                f"Энергия восстанавливается автоматически. Используй /profile для просмотра."
+            # Получаем текущую энергию и информацию о персонаже
+            current_energy = await get_user_energy(session, user_id=message.from_user.id)
+            girl = await get_selected_girl(session, user_id=message.from_user.id)
+            if not girl:
+                girl = await get_default_girl(session)
+            
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="top_up_balance")]
+                ]
             )
+            
+            # Сообщение от персонажа о недостатке энергии
+            if girl:
+                message_text = get_insufficient_balance_message(
+                    girl_name=girl.name,
+                    resource_type="energy",
+                    current=current_energy,
+                    needed=settings.message_energy_cost
+                )
+            else:
+                message_text = (
+                    f"❌ Недостаточно энергии!\n\n"
+                    f"⚡ У тебя: {current_energy} энергии\n"
+                    f"💰 Нужно: {settings.message_energy_cost} энергии"
+                )
+            await message.answer(message_text, reply_markup=keyboard)
             return
         
         # Добавляем сообщение пользователя
@@ -853,7 +949,7 @@ async def handle_dialogue(message: Message) -> None:
         await message.answer(reply_text, reply_markup=inline_keyboard)
 
 
-def build_girl_keyboard(girls: list, current_index: int, selected_girl_id: int | None = None) -> InlineKeyboardMarkup:
+def build_girl_keyboard(girls: list, current_index: int, selected_girl_id: int | None = None, active_dialog_id: int | None = None) -> InlineKeyboardMarkup:
     """Создаёт клавиатуру для одной девушки с навигацией и выбором."""
     total_girls = len(girls)
     if total_girls == 0:
@@ -866,7 +962,8 @@ def build_girl_keyboard(girls: list, current_index: int, selected_girl_id: int |
         current_index = total_girls - 1
     
     current_girl = girls[current_index]
-    is_selected = selected_girl_id is not None and current_girl.id == selected_girl_id
+    # Галочка показывается только если персонаж выбран И есть активный диалог
+    is_selected = selected_girl_id is not None and current_girl.id == selected_girl_id and active_dialog_id is not None
     
     keyboard_buttons = []
     
@@ -926,6 +1023,8 @@ async def handle_choose_girl_callback(callback: CallbackQuery) -> None:
         girls = await get_all_girls(session)
         selected_girl = await get_selected_girl(session, user_id=callback.from_user.id)
         selected_girl_id = selected_girl.id if selected_girl else None
+        # Проверяем наличие активного диалога
+        active_dialog_id = await get_active_dialog_id(session, user_id=callback.from_user.id)
 
     if not girls:
         await callback.message.answer("👥 Пока нет доступных персонажей.")
@@ -941,7 +1040,8 @@ async def handle_choose_girl_callback(callback: CallbackQuery) -> None:
     current_girl = girls[girl_index]
     
     # Формируем текст с информацией о девушке
-    is_selected = selected_girl_id is not None and current_girl.id == selected_girl_id
+    # Галочка показывается только если персонаж выбран И есть активный диалог
+    is_selected = selected_girl_id is not None and current_girl.id == selected_girl_id and active_dialog_id is not None
     marker = "✅ " if is_selected else ""
     
     # Получаем описание девушки
@@ -949,7 +1049,7 @@ async def handle_choose_girl_callback(callback: CallbackQuery) -> None:
     
     text = f"{marker}{current_girl.name}\n\n{description}"
 
-    keyboard = build_girl_keyboard(girls, girl_index, selected_girl_id)
+    keyboard = build_girl_keyboard(girls, girl_index, selected_girl_id, active_dialog_id)
     
     # Добавляем кнопку возврата в главное меню
     back_button = InlineKeyboardButton(text="🏠 Главное меню", callback_data="back_to_main_menu")
@@ -972,7 +1072,12 @@ async def handle_choose_girl_callback(callback: CallbackQuery) -> None:
                 media = InputMediaPhoto(media=photo, caption=text)
                 await safe_edit_media(callback.message, media, reply_markup=keyboard)
             else:
-                # Если нет фото, отправляем новое
+                # Если нет фото, но есть текстовое сообщение - редактируем его на фото
+                # Сначала удаляем старое сообщение, так как нельзя изменить текстовое на фото
+                try:
+                    await callback.message.delete()
+                except Exception:
+                    pass
                 await callback.message.answer_photo(photo, caption=text, reply_markup=keyboard)
             return
         except Exception as exc:
@@ -981,15 +1086,17 @@ async def handle_choose_girl_callback(callback: CallbackQuery) -> None:
             if "timeout" not in error_str and "message is not modified" not in error_str:
                 logging.getLogger(__name__).warning(f"Не удалось отправить фото: {exc}")
     
-    # Если фото не удалось отправить, отправляем/редактируем текстовое сообщение
+    # Если фото не удалось отправить, редактируем текстовое сообщение
     if callback.message.photo:
-        # Если было фото, удаляем его и отправляем текстовое сообщение
+        # Если было фото, но нужно показать текстовое - удаляем и отправляем новое
+        # (нельзя изменить фото на текст напрямую)
         try:
             await callback.message.delete()
         except Exception:
             pass
         await callback.message.answer(text, reply_markup=keyboard)
     else:
+        # Редактируем текстовое сообщение
         await safe_edit_text(callback.message, text, reply_markup=keyboard)
 
 
@@ -1037,17 +1144,16 @@ async def handle_select_girl_callback(callback: CallbackQuery) -> None:
         
         await session.commit()
 
-    # Редактируем сообщение с выбором девушек на введение в сюжет
-    story_intro = get_girl_story_intro(girl.name)
-    image_path = get_girl_image_path(girl.name)
-    
     # Удаляем старое сообщение с выбором девушек
     try:
         await callback.message.delete()
     except Exception as exc:
         logging.getLogger(__name__).warning(f"Не удалось удалить старое сообщение: {exc}")
     
-    # Отправляем новое сообщение с введением в сюжет
+    # Отправляем сообщение с введением в сюжет
+    story_intro = get_girl_story_intro(girl.name)
+    image_path = get_girl_image_path(girl.name)
+    
     if image_path:
         try:
             photo = FSInputFile(image_path)
@@ -1069,6 +1175,12 @@ async def handle_select_girl_callback(callback: CallbackQuery) -> None:
             story_intro,
             reply_markup=get_dialogue_keyboard()
         )
+    
+    # Отправляем приветственное сообщение от персонажа
+    await callback.message.answer(
+        f"👋 {girl.greeting}",
+        reply_markup=get_dialogue_keyboard()
+    )
     
     await callback.answer(f"✅ Выбрана {girl.name}!")
 
@@ -1253,7 +1365,22 @@ async def handle_top_up_balance_callback(callback: CallbackQuery) -> None:
         ]
     )
     
-    await callback.message.answer(text, reply_markup=keyboard)
+    # Редактируем сообщение главного меню на сообщение пополнения баланса
+    try:
+        if callback.message.photo:
+            # Если сообщение с фото, удаляем и отправляем текстовое
+            await callback.message.delete()
+            await callback.message.answer(text, reply_markup=keyboard)
+        else:
+            # Если текстовое, редактируем
+            await callback.message.edit_text(text, reply_markup=keyboard)
+    except Exception as exc:
+        # Если редактирование не удалось, удаляем и отправляем новое
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        await callback.message.answer(text, reply_markup=keyboard)
 
 
 @router.callback_query(lambda c: c.data and c.data == "top_up_packages")
@@ -1294,7 +1421,19 @@ async def handle_top_up_packages_callback(callback: CallbackQuery) -> None:
         ]
     )
     
-    await callback.message.answer(text, reply_markup=keyboard)
+    # Редактируем сообщение пополнения баланса на сообщение с пакетами
+    try:
+        if callback.message.photo:
+            await callback.message.delete()
+            await callback.message.answer(text, reply_markup=keyboard)
+        else:
+            await callback.message.edit_text(text, reply_markup=keyboard)
+    except Exception as exc:
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        await callback.message.answer(text, reply_markup=keyboard)
 
 
 @router.callback_query(lambda c: c.data and c.data == "top_up_diamonds")
@@ -1310,7 +1449,7 @@ async def handle_top_up_diamonds_callback(callback: CallbackQuery) -> None:
         "💎 Алмазы\n\n"
         "Выберите количество:\n\n"
         "💎 50 алмазов\n"
-        "   💰 1 ⭐ (временно)\n\n"
+        "   🎁 БЕСПЛАТНО (временно)\n\n"
         "💎 150 алмазов\n"
         "   💰 125 ⭐ ($2.49)\n\n"
         "💎 500 алмазов\n"
@@ -1323,7 +1462,7 @@ async def handle_top_up_diamonds_callback(callback: CallbackQuery) -> None:
     
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="💎 50 алмазов (1⭐)", callback_data="buy_diamonds:50:1")],
+            [InlineKeyboardButton(text="💎 50 алмазов (БЕСПЛАТНО)", callback_data="buy_diamonds:50:1")],
             [InlineKeyboardButton(text="💎 150 алмазов (125⭐)", callback_data="buy_diamonds:150:125")],
             [InlineKeyboardButton(text="💎 500 алмазов (350⭐)", callback_data="buy_diamonds:500:350")],
             [InlineKeyboardButton(text="💎 1 200 алмазов (750⭐)", callback_data="buy_diamonds:1200:750")],
@@ -1332,7 +1471,19 @@ async def handle_top_up_diamonds_callback(callback: CallbackQuery) -> None:
         ]
     )
     
-    await callback.message.answer(text, reply_markup=keyboard)
+    # Редактируем сообщение пополнения баланса на сообщение с алмазами
+    try:
+        if callback.message.photo:
+            await callback.message.delete()
+            await callback.message.answer(text, reply_markup=keyboard)
+        else:
+            await callback.message.edit_text(text, reply_markup=keyboard)
+    except Exception as exc:
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        await callback.message.answer(text, reply_markup=keyboard)
 
 
 @router.callback_query(lambda c: c.data and c.data == "top_up_energy")
@@ -1370,7 +1521,19 @@ async def handle_top_up_energy_callback(callback: CallbackQuery) -> None:
         ]
     )
     
-    await callback.message.answer(text, reply_markup=keyboard)
+    # Редактируем сообщение пополнения баланса на сообщение с энергией
+    try:
+        if callback.message.photo:
+            await callback.message.delete()
+            await callback.message.answer(text, reply_markup=keyboard)
+        else:
+            await callback.message.edit_text(text, reply_markup=keyboard)
+    except Exception as exc:
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        await callback.message.answer(text, reply_markup=keyboard)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("buy_diamonds:"))
@@ -1390,10 +1553,51 @@ async def handle_buy_diamonds_callback(callback: CallbackQuery) -> None:
     
     await callback.answer()
     
-    # Создаем инвойс для Telegram Stars
+    # Временно: 50 алмазов бесплатно (начисляем напрямую без инвойса)
+    if amount == 50 and stars == 1:
+        async with get_session() as session:
+            from app.repositories.user_profile import add_diamonds
+            from app.repositories.payments import create_payment
+            
+            # Начисляем алмазы
+            await add_diamonds(session, user_id=callback.from_user.id, amount=amount)
+            
+            # Записываем "бесплатную" покупку в базу (0 stars, но с amount=50)
+            await create_payment(
+                session,
+                user_id=callback.from_user.id,
+                payment_type="diamonds",
+                amount_stars=0,  # Бесплатно
+                amount_usd=0.0,
+                diamonds_received=amount,
+                energy_received=0,
+            )
+            
+            await session.commit()
+            
+            # Получаем обновленное количество алмазов
+            from app.repositories.user_profile import get_user_diamonds
+            new_diamonds = await get_user_diamonds(session, user_id=callback.from_user.id)
+        
+        # Редактируем сообщение с ценами на сообщение об успешном пополнении
+        success_text = (
+            f"✅ Вы успешно пополнили баланс!\n\n"
+            f"💎 Получено: {amount} алмазов (бесплатно)\n"
+            f"💎 Теперь у тебя: {new_diamonds} алмазов"
+        )
+        try:
+            await callback.message.edit_text(success_text)
+        except Exception as exc:
+            logging.getLogger(__name__).warning(f"Не удалось отредактировать сообщение: {exc}")
+            await callback.message.answer(success_text)
+        return
+    
+    # Для остальных сумм создаем инвойс
+    # Сохраняем message_id сообщения с ценами в payload для последующего редактирования
+    price_message_id = callback.message.message_id
     title = f"Покупка {amount} алмазов"
     description = f"Вы получите {amount} алмазов за {stars} Telegram Stars"
-    payload = f"diamonds_{amount}_{callback.from_user.id}"
+    payload = f"diamonds_{amount}_{callback.from_user.id}_msg_{price_message_id}"
     currency = "XTR"  # Telegram Stars currency code
     prices = [LabeledPrice(label=f"{amount} алмазов", amount=stars)]
     
@@ -1425,10 +1629,12 @@ async def handle_buy_energy_callback(callback: CallbackQuery) -> None:
     
     await callback.answer()
     
+    # Сохраняем message_id сообщения с ценами в payload для последующего редактирования
+    price_message_id = callback.message.message_id
     # Создаем инвойс для Telegram Stars
     title = f"Покупка {amount} энергии"
     description = f"Вы получите {amount} энергии за {stars} Telegram Stars"
-    payload = f"energy_{amount}_{callback.from_user.id}"
+    payload = f"energy_{amount}_{callback.from_user.id}_msg_{price_message_id}"
     currency = "XTR"  # Telegram Stars currency code
     prices = [LabeledPrice(label=f"{amount} энергии", amount=stars)]
     
@@ -1470,10 +1676,12 @@ async def handle_buy_pack_callback(callback: CallbackQuery) -> None:
     }
     pack_name = pack_names.get(pack_type, "Пакет")
     
+    # Сохраняем message_id сообщения с ценами в payload для последующего редактирования
+    price_message_id = callback.message.message_id
     # Создаем инвойс для Telegram Stars
     title = f"{pack_name}"
     description = f"Включает в себя: {energy} энергии ⚡ и {diamonds} алмазов 💎"
-    payload = f"pack_{pack_type}_{energy}_{diamonds}_{callback.from_user.id}"
+    payload = f"pack_{pack_type}_{energy}_{diamonds}_{callback.from_user.id}_msg_{price_message_id}"
     currency = "XTR"  # Telegram Stars currency code
     prices = [LabeledPrice(label=f"{pack_name} ({energy}⚡ + {diamonds}💎)", amount=stars)]
     
@@ -1506,10 +1714,12 @@ async def handle_buy_combo_callback(callback: CallbackQuery) -> None:
     
     await callback.answer()
     
+    # Сохраняем message_id сообщения с ценами в payload для последующего редактирования
+    price_message_id = callback.message.message_id
     # Создаем инвойс для Telegram Stars
     title = f"Комбо: {diamonds} алмазов + {energy} энергии"
     description = f"Вы получите {diamonds} алмазов и {energy} энергии за {stars} Telegram Stars"
-    payload = f"combo_{diamonds}_{energy}_{callback.from_user.id}"
+    payload = f"combo_{diamonds}_{energy}_{callback.from_user.id}_msg_{price_message_id}"
     currency = "XTR"  # Telegram Stars currency code
     prices = [LabeledPrice(label=f"Комбо {diamonds}💎 + {energy}⚡", amount=stars)]
     
@@ -1551,7 +1761,19 @@ async def handle_successful_payment(message: Message) -> None:
     
     logger.info(f"handle_successful_payment: user_id={message.from_user.id}, payload={payload}, amount={payment.total_amount}, charge_id={payment.telegram_payment_charge_id}")
     
-    # Парсим payload: diamonds_10_123456789 или energy_25_123456789 или combo_20_20_123456789 или pack_starter_300_300_123456789
+    # Парсим payload: diamonds_10_123456789_msg_12345 или energy_25_123456789_msg_12345 или combo_20_20_123456789_msg_12345 или pack_starter_300_300_123456789_msg_12345
+    # Извлекаем message_id из payload (если есть)
+    price_message_id = None
+    if "_msg_" in payload:
+        try:
+            msg_index = payload.rfind("_msg_")
+            if msg_index != -1:
+                price_message_id = int(payload[msg_index + 5:])  # +5 для "_msg_"
+                # Убираем _msg_XXX из payload для корректного парсинга
+                payload = payload[:msg_index]
+        except (ValueError, IndexError):
+            pass
+    
     parts = payload.split("_")
     
     try:
@@ -1579,28 +1801,20 @@ async def handle_successful_payment(message: Message) -> None:
                 await session.commit()
                 logger.info(f"Payment saved: user_id={message.from_user.id}, type=diamonds, stars={amount_stars}, amount={amount}")
                 
-                # Обновляем главное меню
-                async with get_session() as session2:
-                    diamonds = await get_user_diamonds(session2, user_id=message.from_user.id)
-                    energy = await get_user_energy(session2, user_id=message.from_user.id)
-                
-                menu_text = (
-                    f"🏠 Главное меню\n\n"
-                    f"💎 Алмазы: {diamonds}\n"
-                    f"   💰 Стоимость генерации изображения: {settings.image_generation_cost} алмазов\n\n"
-                    f"⚡ Энергия: {energy}\n"
-                    f"   💬 Стоимость сообщения: {settings.message_energy_cost} энергии"
-                )
-                
-                keyboard = InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [InlineKeyboardButton(text="💕 Выбрать девушку", callback_data="choose_girl:0")],
-                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="top_up_balance")]
-                    ]
-                )
-                
-                await message.answer(f"✅ Успешно! Вы получили {amount} алмазов 💎")
-                await message.answer(menu_text, reply_markup=keyboard)
+                # Редактируем сообщение с ценами на сообщение об успешном пополнении
+                success_text = f"✅ Вы успешно пополнили баланс!\n\n💎 Получено: {amount} алмазов"
+                if price_message_id:
+                    try:
+                        await message.bot.edit_message_text(
+                            chat_id=message.chat.id,
+                            message_id=price_message_id,
+                            text=success_text
+                        )
+                    except Exception as exc:
+                        logger.warning(f"Не удалось отредактировать сообщение с ценами: {exc}")
+                        await message.answer(success_text)
+                else:
+                    await message.answer(success_text)
             elif parts[0] == "energy":
                 # Покупка энергии
                 amount = int(parts[1])
@@ -1622,28 +1836,20 @@ async def handle_successful_payment(message: Message) -> None:
                 await session.commit()
                 logger.info(f"Payment saved: user_id={message.from_user.id}, type=energy, stars={amount_stars}, amount={amount}")
                 
-                # Обновляем главное меню
-                async with get_session() as session2:
-                    diamonds = await get_user_diamonds(session2, user_id=message.from_user.id)
-                    energy = await get_user_energy(session2, user_id=message.from_user.id)
-                
-                menu_text = (
-                    f"🏠 Главное меню\n\n"
-                    f"💎 Алмазы: {diamonds}\n"
-                    f"   💰 Стоимость генерации изображения: {settings.image_generation_cost} алмазов\n\n"
-                    f"⚡ Энергия: {energy}\n"
-                    f"   💬 Стоимость сообщения: {settings.message_energy_cost} энергии"
-                )
-                
-                keyboard = InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [InlineKeyboardButton(text="💕 Выбрать девушку", callback_data="choose_girl:0")],
-                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="top_up_balance")]
-                    ]
-                )
-                
-                await message.answer(f"✅ Успешно! Вы получили {amount} энергии ⚡")
-                await message.answer(menu_text, reply_markup=keyboard)
+                # Редактируем сообщение с ценами на сообщение об успешном пополнении
+                success_text = f"✅ Вы успешно пополнили баланс!\n\n⚡ Получено: {amount} энергии"
+                if price_message_id:
+                    try:
+                        await message.bot.edit_message_text(
+                            chat_id=message.chat.id,
+                            message_id=price_message_id,
+                            text=success_text
+                        )
+                    except Exception as exc:
+                        logger.warning(f"Не удалось отредактировать сообщение с ценами: {exc}")
+                        await message.answer(success_text)
+                else:
+                    await message.answer(success_text)
             elif parts[0] == "combo":
                 # Покупка комбо
                 diamonds = int(parts[1])
@@ -1667,7 +1873,21 @@ async def handle_successful_payment(message: Message) -> None:
                 
                 await session.commit()
                 logger.info(f"Payment saved: user_id={message.from_user.id}, type=combo, stars={amount_stars}, diamonds={diamonds}, energy={energy}")
-                await message.answer(f"✅ Успешно! Вы получили {diamonds} алмазов 💎 и {energy} энергии ⚡")
+                
+                # Редактируем сообщение с ценами на сообщение об успешном пополнении
+                success_text = f"✅ Вы успешно пополнили баланс!\n\n💎 Получено: {diamonds} алмазов\n⚡ Получено: {energy} энергии"
+                if price_message_id:
+                    try:
+                        await message.bot.edit_message_text(
+                            chat_id=message.chat.id,
+                            message_id=price_message_id,
+                            text=success_text
+                        )
+                    except Exception as exc:
+                        logger.warning(f"Не удалось отредактировать сообщение с ценами: {exc}")
+                        await message.answer(success_text)
+                else:
+                    await message.answer(success_text)
             elif parts[0] == "pack":
                 # Покупка пакета
                 pack_type = parts[1]  # starter, premium, ultimate
@@ -1700,11 +1920,26 @@ async def handle_successful_payment(message: Message) -> None:
                 
                 await session.commit()
                 logger.info(f"Payment saved: user_id={message.from_user.id}, type=pack, stars={amount_stars}")
-                await message.answer(
-                    f"✅ Успешно! Вы получили {pack_name}:\n"
-                    f"💎 {diamonds} алмазов\n"
-                    f"⚡ {energy} энергии"
+                
+                # Редактируем сообщение с ценами на сообщение об успешном пополнении
+                success_text = (
+                    f"✅ Вы успешно пополнили баланс!\n\n"
+                    f"🎁 Получен пакет: {pack_name}\n"
+                    f"💎 Алмазов: {diamonds}\n"
+                    f"⚡ Энергии: {energy}"
                 )
+                if price_message_id:
+                    try:
+                        await message.bot.edit_message_text(
+                            chat_id=message.chat.id,
+                            message_id=price_message_id,
+                            text=success_text
+                        )
+                    except Exception as exc:
+                        logger.warning(f"Не удалось отредактировать сообщение с ценами: {exc}")
+                        await message.answer(success_text)
+                else:
+                    await message.answer(success_text)
     except Exception as e:
         logger.error(f"Error processing payment: {e}", exc_info=True)
         await message.answer(f"⚠️ Произошла ошибка при обработке платежа. Пожалуйста, обратитесь к администратору.")
@@ -1720,6 +1955,13 @@ async def handle_back_to_main_menu_callback(callback: CallbackQuery) -> None:
     await callback.answer()
     
     async with get_session() as session:
+        # Проверяем, есть ли активный диалог, и завершаем его
+        active_dialog_id = await get_active_dialog_id(session, user_id=callback.from_user.id)
+        if active_dialog_id:
+            # Завершаем диалог (устанавливаем active_dialog_id в None)
+            await set_active_dialog(session, user_id=callback.from_user.id, dialog_id=None)
+            await session.commit()
+        
         # Получаем информацию о профиле для главного меню
         diamonds = await get_user_diamonds(session, user_id=callback.from_user.id)
         energy = await get_user_energy(session, user_id=callback.from_user.id)
@@ -1733,14 +1975,30 @@ async def handle_back_to_main_menu_callback(callback: CallbackQuery) -> None:
         f"   💬 Стоимость сообщения: {settings.message_energy_cost} энергии"
     )
     
-    # Показываем главное меню с одной кнопкой
+    # Показываем главное меню с кнопками (такие же, как в обработчике встроенной кнопки)
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="💕 Выбрать девушку", callback_data="choose_girl:0")]
+            [InlineKeyboardButton(text="💕 Выбрать девушку", callback_data="choose_girl:0")],
+            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="top_up_balance")]
         ]
     )
     
-    await callback.message.answer(menu_text, reply_markup=keyboard)
+    # Пытаемся отредактировать сообщение, если не получается - удаляем и отправляем новое
+    try:
+        if callback.message.photo:
+            # Если сообщение с фото, удаляем и отправляем текстовое
+            await callback.message.delete()
+            await callback.message.answer(menu_text, reply_markup=keyboard)
+        else:
+            # Если текстовое, редактируем
+            await callback.message.edit_text(menu_text, reply_markup=keyboard)
+    except Exception as exc:
+        # Если редактирование не удалось, удаляем и отправляем новое
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        await callback.message.answer(menu_text, reply_markup=keyboard)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("get_photo:"))
@@ -1762,14 +2020,6 @@ async def handle_get_photo_callback(callback: CallbackQuery) -> None:
     async with get_session() as session:
         # Проверяем наличие алмазов
         diamonds = await get_user_diamonds(session, user_id=callback.from_user.id)
-        if diamonds < settings.image_generation_cost:
-            await callback.message.answer(
-                f"❌ Недостаточно алмазов!\n\n"
-                f"💎 У тебя: {diamonds} алмазов\n"
-                f"💰 Нужно: {settings.image_generation_cost} алмазов\n\n"
-                f"Используй /profile для просмотра профиля."
-            )
-            return
         from app.repositories.dialogs import get_dialog_by_id
         from app.repositories.user_selected_girl import get_user_photos_used, increment_user_photos_used
         
@@ -1783,98 +2033,72 @@ async def handle_get_photo_callback(callback: CallbackQuery) -> None:
             await callback.message.answer("🔒 У тебя нет доступа к этому диалогу.")
             return
         
-        # Проверяем общий лимит фото для пользователя (для всех девушек)
-        photos_used = await get_user_photos_used(session, user_id=callback.from_user.id)
-        if photos_used >= MAX_PHOTOS_PER_DIALOG:
-            await callback.message.answer(f"📷 Лимит фото исчерпан ({photos_used}/{MAX_PHOTOS_PER_DIALOG})")
-            return
-        
         # Получаем информацию о персонаже
         girl = await get_girl_by_id(session, dialog.girl_id)
         if not girl:
             await callback.message.answer("👤 Персонаж не найден.")
             return
         
+        # Проверяем баланс алмазов
+        if diamonds < settings.image_generation_cost:
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="top_up_balance")]
+                ]
+            )
+            # Сообщение от персонажа о недостатке алмазов
+            message_text = get_insufficient_balance_message(
+                girl_name=girl.name,
+                resource_type="diamonds",
+                current=diamonds,
+                needed=settings.image_generation_cost
+            )
+            await callback.message.answer(message_text, reply_markup=keyboard)
+            return
+        
+        # Проверяем общий лимит фото для пользователя (для всех девушек)
+        photos_used = await get_user_photos_used(session, user_id=callback.from_user.id)
+        if photos_used >= MAX_PHOTOS_PER_DIALOG:
+            await callback.message.answer(f"📷 Лимит фото исчерпан ({photos_used}/{MAX_PHOTOS_PER_DIALOG})")
+            return
+        
         # Списываем алмазы перед генерацией
         diamonds_spent = await spend_diamonds(session, user_id=callback.from_user.id, amount=settings.image_generation_cost)
         if not diamonds_spent:
-            await callback.message.answer(
-                f"❌ Недостаточно алмазов!\n\n"
-                f"💎 Нужно: {settings.image_generation_cost} алмазов\n\n"
-                f"Используй /profile для просмотра профиля."
+            # Получаем текущее количество алмазов для отображения
+            current_diamonds = await get_user_diamonds(session, user_id=callback.from_user.id)
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="top_up_balance")]
+                ]
             )
+            # Сообщение от персонажа о недостатке алмазов
+            message_text = get_insufficient_balance_message(
+                girl_name=girl.name,
+                resource_type="diamonds",
+                current=current_diamonds,
+                needed=settings.image_generation_cost
+            )
+            await callback.message.answer(message_text, reply_markup=keyboard)
             return
         
         await session.commit()
         
-        # Получаем все сообщения для поиска последнего обмена
+        # Получаем все сообщения для анализа контекста
         all_messages = await get_all_messages(session, dialog_id=dialog_id)
         
-        # Проверяем флаг 18+ для диалога
-        from app.repositories.dialogs import get_dialog_nsfw_enabled
-        nsfw_enabled = await get_dialog_nsfw_enabled(session, dialog_id=dialog_id)
-        
-        # Определяем уровень обнажения на основе последних сообщений
-        from app.services.nudity_level_detector import detect_nudity_level
-        nudity_level = detect_nudity_level(all_messages, check_last=8) if all_messages else "none"
-        
-        # Используем базовый детальный промпт как основу
-        # Передаем описание одежды и уровень обнажения - одежда будет добавлена только если nudity_level == "none"
+        # Используем базовый промпт с характеристиками персонажа и одеждой
         base_prompt = build_image_prompt(
             girl_name=girl.name,
             clothing_description=girl.clothing_description,
-            nudity_level=nudity_level,
         )
         
-        # Добавляем контекст обнажения ЕСЛИ в диалоге упомянуто раздевание/обнажение
-        # НЕ требуем nsfw_enabled - если в диалоге упомянуто раздевание, оно должно отражаться в изображении!
-        if nudity_level == "full":
-            # Полное обнажение - УЛУЧШЕНО: более явные и детальные промпты
-            nsfw_prompt_addition = (
-                "nsfw, explicit, completely nude, fully naked, no clothing at all, "
-                "all body parts visible and exposed, nothing covering body, "
-                "spread legs, open pose, arms not covering, "
-                "breasts fully visible, nipples visible and exposed, "
-                "pussy visible, vagina visible, ass visible, "
-                "full frontal nudity, no censorship, uncensored, "
-                "erotic, sensual, sexual content, adult content, "
-                "body fully exposed, no hiding, completely exposed"
-            )
-            base_prompt = f"{base_prompt}, {nsfw_prompt_addition}"
-        elif nudity_level == "partial":
-            # Частичное обнажение - только топлесс - УЛУЧШЕНО
-            nsfw_prompt_addition = (
-                "nsfw, topless, no top, no shirt, no blouse, "
-                "bra removed, no bra, breasts fully visible, "
-                "nipples visible and exposed, breasts exposed, "
-                "partially nude, upper body nude, lower body still clothed, "
-                "panties on, bottom clothed"
-            )
-            base_prompt = f"{base_prompt}, {nsfw_prompt_addition}"
-        elif nudity_level == "undressing":
-            # В процессе раздевания - показываем начало процесса - УЛУЧШЕНО
-            nsfw_prompt_addition = (
-                "unbuttoning shirt, removing top, taking off clothes, "
-                "partially undressed, showing skin, revealing, "
-                "in the process of undressing, clothes coming off, "
-                "exposing body, revealing body"
-            )
-            base_prompt = f"{base_prompt}, {nsfw_prompt_addition}"
-        # Если nudity_level == "none" - НЕ добавляем никакого NSFW контента
-        
-        # Контекст из диалога обязателен, если есть история
-        # Берем весь диалог для общего анализа и последние сообщения для конкретного промпта
+        # Формируем контекст из диалога (только эмоции и уровень обнажения)
         if all_messages:
-            # Формируем весь диалог для общего анализа
-            full_dialogue = [
-                {"role": msg.role, "content": msg.content}
-                for msg in all_messages
-            ]
-            
-            # Берем последние 12-15 сообщений для лучшего контекста
+            # Берем последние сообщения для анализа
             recent_messages = list(all_messages[-15:]) if len(all_messages) >= 15 else all_messages
             
-            # Формируем диалог из последних сообщений для конкретного контекста
+            # Формируем диалог из последних сообщений
             recent_dialogue = [
                 {"role": msg.role, "content": msg.content}
                 for msg in recent_messages
@@ -1883,25 +2107,29 @@ async def handle_get_photo_callback(callback: CallbackQuery) -> None:
             venice_client = VeniceClient()
             try:
                 girl_description = f"{girl.name}, {girl.system_prompt[:200]}"
+                
+                # Определяем, какую одежду снимает персонаж при раздевании
+                undressing_clothing = {
+                    "Стейси": "shirt",  # рубашка
+                    "Аманда": "dress",  # платье
+                    "Джейн": "dress",   # платье
+                }
+                clothing_item = undressing_clothing.get(girl.name, "clothes")
+                
                 dialogue_context = await venice_client.generate_image_prompt(
                     girl_name=girl.name,
                     girl_description=girl_description,
                     recent_dialogue=recent_dialogue,
-                    full_dialogue=full_dialogue,  # Передаем весь диалог для общего анализа
-                    force_nsfw=(nsfw_enabled and nudity_level == "full"),  # Принудительный 18+ только при полном обнажении
-                    nudity_level=nudity_level,  # Передаем уровень обнажения для точной синхронизации
-                    fixed_clothing=girl.clothing_description if nudity_level == "none" else None,  # Передаем фиксированную одежду только если персонаж одет
+                    full_dialogue=None,  # Не нужен полный диалог
+                    undressing_clothing=clothing_item,
                 )
-                # Контекст из диалога обязателен - комбинируем с базовым промптом
-                if dialogue_context and len(dialogue_context.strip()) > 10:
-                    # Добавляем контекст к базовому промпту (базовый промпт сохраняет все ключевые слова качества)
+                # Добавляем контекст к базовому промпту
+                if dialogue_context and len(dialogue_context.strip()) > 5:
                     image_prompt = f"{base_prompt}, {dialogue_context}"
                 else:
-                    # Если контекст слишком короткий или пустой, используем только базовый
                     image_prompt = base_prompt
             except Exception as exc:
                 logging.getLogger(__name__).warning(f"Не удалось добавить контекст через ИИ: {exc}")
-                # Fallback: используем только базовый промпт
                 image_prompt = base_prompt
             finally:
                 await venice_client.close()

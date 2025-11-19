@@ -1,11 +1,13 @@
 aiogram==3.4.1
 SQLAlchemy[asyncio]==2.0.23
 asyncpg==0.29.0
+cloudscraper==1.2.71
 httpx==0.25.2
 pydantic-settings==2.0.3
 python-dotenv==1.0.0
 Pillow==10.1.0
 redis==5.0.1
 replicate==0.25.1
+selenium==4.15.2
 
 

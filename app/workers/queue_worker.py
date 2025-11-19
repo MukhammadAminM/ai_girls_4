@@ -64,6 +64,7 @@ class QueueWorker:
                 try:
                     # Извлекаем данные задачи
                     prompt = task.data.get("prompt")
+                    negative_prompt = task.data.get("negative_prompt")
                     user_id = task.user_id
                     dialog_id = task.data.get("dialog_id")
                     girl_id = task.data.get("girl_id")
@@ -71,8 +72,12 @@ class QueueWorker:
                     if not prompt:
                         raise ValueError("Prompt is required")
                     
-                    # Генерируем изображение (используем Replicate или локальный API)
-                    if settings.use_replicate:
+                    # Генерируем изображение (используем Live3D, Replicate или локальный API)
+                    if settings.use_live3d:
+                        logger.info("Используется Live3D для генерации изображения")
+                        from app.services.live3d_client import Live3DImageClient
+                        image_client = Live3DImageClient()
+                    elif settings.use_replicate:
                         logger.info("Используется Replicate для генерации изображения")
                         image_client = ReplicateImageClient()
                     else:
@@ -80,7 +85,10 @@ class QueueWorker:
                         image_client = ImageClient()
                     
                     try:
-                        image_data = await image_client.generate_image(prompt)
+                        image_data = await image_client.generate_image(
+                            prompt,
+                            negative_prompt=negative_prompt
+                        )
                         image_base64 = base64.b64encode(image_data).decode("utf-8")
                         
                         # Обновляем счётчик фото, если указан dialog_id

@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     image_default_steps: int = 28
     image_default_cfg: float = 5.0
     image_default_seed: int = -1
-    image_default_negative_prompt: str = "lowres, bad anatomy, blurry, out of focus, extra limbs, bad hands, bad face, low quality, deformed, watermark, signature, text, cropped, overexposed, oversaturated, hands covering, arms covering, hair covering body, objects covering body, hands in front, covering, hidden, censored"
+    image_default_negative_prompt: str = "(worst quality, low quality:1.4), (greyscale, monochrome:1.1), cropped, lowres , username, blurry, trademark, watermark, title, strabismus, clothing cutout, side slit,worst hand, (ugly face:1.2), extra leg, extra arm, bad foot, text, name, badhandv4, easynegative, EasyNegativeV2, negative_hand, ng_deepnegative_v1_75t"
     image_default_lora_name: str | None = None
     image_default_lora_strength_model: float = 0.80
     image_default_lora_strength_clip: float = 0.90
@@ -25,6 +25,16 @@ class Settings(BaseSettings):
     # "cjwbw/animagine-xl-3.1:6afe2e6b27dad2d6f480b59195c221884b6acc589ff4d05ff0e5fc058690fbb9" - Animagine XL 3.1
     # "aisha-ai-official/wai-nsfw-illustrious-v11:c1d5b02687df6081c7953c74bcc527858702e8c153c9382012ccc3906752d3ec" - WAI NSFW Illustrious v11 (специально для NSFW)
     use_replicate: bool = False  # Переключатель между локальным API и Replicate
+    
+    # Live3D настройки
+    live3d_api_token: str | None = None  # Bearer токен для Live3D API
+    live3d_model_id: int = 135  # ID модели для генерации
+    live3d_consume_points: int = 20  # Количество очков для одной генерации
+    live3d_default_width: int = 512  # Ширина по умолчанию для Live3D (как в test_live3d_api.py)
+    live3d_default_height: int = 768  # Высота по умолчанию для Live3D (как в test_live3d_api.py)
+    live3d_default_cfg: float = 7.0  # CFG scale по умолчанию для Live3D (как в test_live3d_api.py)
+    live3d_default_steps: int = 25  # Количество шагов по умолчанию для Live3D (как в test_live3d_api.py)
+    use_live3d: bool = False  # Переключатель для использования Live3D вместо локального API/Replicate
     
     # Redis настройки
     redis_url: str = "redis://localhost:6379/0"

@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import Date, cast, func, select
+from sqlalchemy import Date, cast, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import UserActivity, UserRetention
@@ -130,76 +130,102 @@ async def get_retention_stats(
     active_users_result = await session.execute(active_users_stmt)
     active_users = active_users_result.scalar_one() or 0
     
-    # Retention по дням (D1, D7, D30)
+    # Retention по дням (D1, D4, D7, D30)
+    # Правильный расчет: берем всех пользователей, зарегистрировавшихся >= N дней назад,
+    # и проверяем, вернулись ли они хотя бы один раз после N-го дня
     today = datetime.now(timezone.utc).date()
     
-    # D1 Retention (вернулись на следующий день)
-    d1_date = today - timedelta(days=1)
+    # D1 Retention (вернулись на следующий день или позже)
+    # Берем пользователей, зарегистрировавшихся >= 1 дня назад (но не более 30 дней назад для релевантности)
+    d1_cutoff_start = today - timedelta(days=30)  # Не старше 30 дней
+    d1_cutoff_end = today - timedelta(days=1)  # Не позже вчера
     d1_users_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d1_date
+        cast(UserRetention.first_seen, Date) >= d1_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d1_cutoff_end
     )
     d1_users_result = await session.execute(d1_users_stmt)
     d1_new = d1_users_result.scalar_one() or 0
     
+    # Вернулись хотя бы один раз после первого дня
+    # Проверяем, что last_seen > first_seen (т.е. вернулись хотя бы один раз)
     d1_returned_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d1_date,
-        cast(UserRetention.last_seen, Date) >= today
+        cast(UserRetention.first_seen, Date) >= d1_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d1_cutoff_end,
+        UserRetention.last_seen > UserRetention.first_seen  # Вернулись после первого дня
     )
     d1_returned_result = await session.execute(d1_returned_stmt)
     d1_returned = d1_returned_result.scalar_one() or 0
     
-    d1_retention = (d1_returned / d1_new * 100) if d1_new > 0 else 0
+    d1_retention = (d1_returned / d1_new * 100) if d1_new > 0 else 0.0
     
-    # D4 Retention
-    d4_date = today - timedelta(days=4)
+    # D4 Retention (вернулись через 4 дня или позже)
+    d4_cutoff_start = today - timedelta(days=30)
+    d4_cutoff_end = today - timedelta(days=4)  # Зарегистрировались >= 4 дня назад
     d4_users_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d4_date
+        cast(UserRetention.first_seen, Date) >= d4_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d4_cutoff_end
     )
     d4_users_result = await session.execute(d4_users_stmt)
     d4_new = d4_users_result.scalar_one() or 0
     
+    # Вернулись хотя бы один раз после 4-го дня
+    # Проверяем, что last_seen >= first_seen + 4 дня
+    # В PostgreSQL используем INTERVAL для добавления дней
     d4_returned_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d4_date,
-        UserRetention.last_seen >= d4_date + timedelta(days=1)
+        cast(UserRetention.first_seen, Date) >= d4_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d4_cutoff_end,
+        text("CAST(last_seen AS DATE) >= CAST(first_seen AS DATE) + INTERVAL '4 days'")
     )
     d4_returned_result = await session.execute(d4_returned_stmt)
     d4_returned = d4_returned_result.scalar_one() or 0
     
-    d4_retention = (d4_returned / d4_new * 100) if d4_new > 0 else 0
+    d4_retention = (d4_returned / d4_new * 100) if d4_new > 0 else 0.0
     
-    # D7 Retention
-    d7_date = today - timedelta(days=7)
+    # D7 Retention (вернулись через 7 дней или позже)
+    d7_cutoff_start = today - timedelta(days=30)
+    d7_cutoff_end = today - timedelta(days=7)  # Зарегистрировались >= 7 дней назад
     d7_users_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d7_date
+        cast(UserRetention.first_seen, Date) >= d7_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d7_cutoff_end
     )
     d7_users_result = await session.execute(d7_users_stmt)
     d7_new = d7_users_result.scalar_one() or 0
     
+    # Вернулись хотя бы один раз после 7-го дня
+    # Проверяем, что last_seen >= first_seen + 7 дней
+    # В PostgreSQL используем INTERVAL для добавления дней
     d7_returned_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d7_date,
-        UserRetention.last_seen >= d7_date + timedelta(days=1)
+        cast(UserRetention.first_seen, Date) >= d7_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d7_cutoff_end,
+        text("CAST(last_seen AS DATE) >= CAST(first_seen AS DATE) + INTERVAL '7 days'")
     )
     d7_returned_result = await session.execute(d7_returned_stmt)
     d7_returned = d7_returned_result.scalar_one() or 0
     
-    d7_retention = (d7_returned / d7_new * 100) if d7_new > 0 else 0
+    d7_retention = (d7_returned / d7_new * 100) if d7_new > 0 else 0.0
     
-    # D30 Retention
-    d30_date = today - timedelta(days=30)
+    # D30 Retention (вернулись через 30 дней или позже)
+    d30_cutoff_start = today - timedelta(days=60)  # Берем больше дней для статистики
+    d30_cutoff_end = today - timedelta(days=30)  # Зарегистрировались >= 30 дней назад
     d30_users_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d30_date
+        cast(UserRetention.first_seen, Date) >= d30_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d30_cutoff_end
     )
     d30_users_result = await session.execute(d30_users_stmt)
     d30_new = d30_users_result.scalar_one() or 0
     
+    # Вернулись хотя бы один раз после 30-го дня
+    # Проверяем, что last_seen >= first_seen + 30 дней
+    # В PostgreSQL используем INTERVAL для добавления дней
     d30_returned_stmt = select(func.count(UserRetention.user_id)).where(
-        cast(UserRetention.first_seen, Date) == d30_date,
-        UserRetention.last_seen >= d30_date + timedelta(days=1)
+        cast(UserRetention.first_seen, Date) >= d30_cutoff_start,
+        cast(UserRetention.first_seen, Date) <= d30_cutoff_end,
+        text("CAST(last_seen AS DATE) >= CAST(first_seen AS DATE) + INTERVAL '30 days'")
     )
     d30_returned_result = await session.execute(d30_returned_stmt)
     d30_returned = d30_returned_result.scalar_one() or 0
     
-    d30_retention = (d30_returned / d30_new * 100) if d30_new > 0 else 0
+    d30_retention = (d30_returned / d30_new * 100) if d30_new > 0 else 0.0
     
     # Средние метрики
     avg_messages_stmt = select(func.avg(UserRetention.total_messages))
