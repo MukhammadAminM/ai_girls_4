@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # Настройки ресурсов
     image_generation_cost: int = 5  # Стоимость генерации изображения в алмазах
     message_energy_cost: int = 1  # Стоимость сообщения в энергии
+    
+    # Настройки параллельной обработки
+    max_concurrent_image_generations: int = 5  # Максимальное количество одновременных генераций изображений
+    max_concurrent_reply_generations: int = 10  # Максимальное количество одновременных генераций ответов
     energy_regen_amount: int = 1  # Количество энергии, восстанавливаемой за раз
     energy_regen_interval: int = 60  # Интервал регенерации энергии в секундах
 

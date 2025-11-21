@@ -24,12 +24,26 @@ class QueueWorker:
     def __init__(self) -> None:
         self.queue_service = QueueService()
         self.running = False
+        # Семафоры для ограничения параллелизма (инициализируются в start)
+        self.image_semaphore: asyncio.Semaphore | None = None
+        self.reply_semaphore: asyncio.Semaphore | None = None
+        # Список активных задач для отслеживания
+        self.active_tasks: set[asyncio.Task] = set()
     
     async def start(self) -> None:
         """Запускает воркер."""
         await self.queue_service.connect()
         self.running = True
-        logger.info("Queue worker started")
+        
+        # Инициализируем семафоры для ограничения параллелизма
+        self.image_semaphore = asyncio.Semaphore(settings.max_concurrent_image_generations)
+        self.reply_semaphore = asyncio.Semaphore(settings.max_concurrent_reply_generations)
+        
+        logger.info(
+            f"Queue worker started with {settings.max_concurrent_image_generations} "
+            f"concurrent image generations and {settings.max_concurrent_reply_generations} "
+            f"concurrent reply generations"
+        )
         
         # Запускаем обработчики для каждого типа задач
         tasks = [
@@ -43,92 +57,173 @@ class QueueWorker:
     async def stop(self) -> None:
         """Останавливает воркер."""
         self.running = False
+        
+        # Ждем завершения всех активных задач
+        if self.active_tasks:
+            logger.info(f"Waiting for {len(self.active_tasks)} active tasks to complete...")
+            await asyncio.gather(*self.active_tasks, return_exceptions=True)
+            self.active_tasks.clear()
+        
         await self.queue_service.disconnect()
         logger.info("Queue worker stopped")
     
+    async def _process_single_image_task(self, task: Any) -> None:
+        """Обрабатывает одну задачу генерации изображения."""
+        if self.image_semaphore is None:
+            raise RuntimeError("Worker not started")
+        async with self.image_semaphore:  # Ограничиваем параллелизм
+            try:
+                logger.info(f"Processing image generation task: {task.task_id}")
+                
+                # Извлекаем данные задачи
+                prompt = task.data.get("prompt")
+                negative_prompt = task.data.get("negative_prompt")
+                user_id = task.user_id
+                dialog_id = task.data.get("dialog_id")
+                girl_id = task.data.get("girl_id")
+                
+                if not prompt:
+                    raise ValueError("Prompt is required")
+                
+                # Генерируем изображение (используем Live3D, Replicate или локальный API)
+                if settings.use_live3d:
+                    logger.info("Используется Live3D для генерации изображения")
+                    from app.services.live3d_client import Live3DImageClient
+                    image_client = Live3DImageClient()
+                elif settings.use_replicate:
+                    logger.info("Используется Replicate для генерации изображения")
+                    image_client = ReplicateImageClient()
+                else:
+                    logger.info("Используется локальный API для генерации изображения")
+                    image_client = ImageClient()
+                
+                try:
+                    image_data = await image_client.generate_image(
+                        prompt,
+                        negative_prompt=negative_prompt
+                    )
+                    image_base64 = base64.b64encode(image_data).decode("utf-8")
+                    
+                    # Обновляем счётчик фото, если указан dialog_id
+                    if dialog_id:
+                        async with get_session() as session:
+                            await increment_user_photos_used(session, user_id=user_id)
+                            await session.commit()
+                    
+                    # Сохраняем результат
+                    await self.queue_service.update_task_status(
+                        task.task_id,
+                        TaskStatus.COMPLETED,
+                        result={
+                            "image_base64": image_base64,
+                            "image_size": len(image_data),
+                            "dialog_id": dialog_id,
+                            "girl_id": girl_id,
+                        }
+                    )
+                    
+                    logger.info(f"Image generation completed: {task.task_id}")
+                finally:
+                    await image_client.close()
+            
+            except Exception as exc:
+                logger.exception(f"Error processing image generation task {task.task_id}: {exc}")
+                await self.queue_service.update_task_status(
+                    task.task_id,
+                    TaskStatus.FAILED,
+                    error=str(exc)
+                )
+    
     async def _process_generate_image_tasks(self) -> None:
-        """Обрабатывает задачи генерации изображений."""
+        """Обрабатывает задачи генерации изображений параллельно."""
         while self.running:
             try:
+                # Извлекаем задачу из очереди
                 task = await self.queue_service.dequeue_task(
                     TaskType.GENERATE_IMAGE,
                     timeout=1
                 )
                 
                 if task is None:
+                    # Очищаем завершенные задачи из активных
+                    self.active_tasks = {t for t in self.active_tasks if not t.done()}
                     await asyncio.sleep(0.1)
                     continue
                 
-                logger.info(f"Processing image generation task: {task.task_id}")
+                # Запускаем обработку задачи параллельно
+                task_handle = asyncio.create_task(self._process_single_image_task(task))
+                self.active_tasks.add(task_handle)
                 
-                try:
-                    # Извлекаем данные задачи
-                    prompt = task.data.get("prompt")
-                    negative_prompt = task.data.get("negative_prompt")
-                    user_id = task.user_id
-                    dialog_id = task.data.get("dialog_id")
-                    girl_id = task.data.get("girl_id")
-                    
-                    if not prompt:
-                        raise ValueError("Prompt is required")
-                    
-                    # Генерируем изображение (используем Live3D, Replicate или локальный API)
-                    if settings.use_live3d:
-                        logger.info("Используется Live3D для генерации изображения")
-                        from app.services.live3d_client import Live3DImageClient
-                        image_client = Live3DImageClient()
-                    elif settings.use_replicate:
-                        logger.info("Используется Replicate для генерации изображения")
-                        image_client = ReplicateImageClient()
-                    else:
-                        logger.info("Используется локальный API для генерации изображения")
-                        image_client = ImageClient()
-                    
-                    try:
-                        image_data = await image_client.generate_image(
-                            prompt,
-                            negative_prompt=negative_prompt
-                        )
-                        image_base64 = base64.b64encode(image_data).decode("utf-8")
-                        
-                        # Обновляем счётчик фото, если указан dialog_id
-                        if dialog_id:
-                            async with get_session() as session:
-                                await increment_user_photos_used(session, user_id=user_id)
-                                await session.commit()
-                        
-                        # Сохраняем результат
-                        await self.queue_service.update_task_status(
-                            task.task_id,
-                            TaskStatus.COMPLETED,
-                            result={
-                                "image_base64": image_base64,
-                                "image_size": len(image_data),
-                                "dialog_id": dialog_id,
-                                "girl_id": girl_id,
-                            }
-                        )
-                        
-                        logger.info(f"Image generation completed: {task.task_id}")
-                    finally:
-                        await image_client.close()
-                
-                except Exception as exc:
-                    logger.exception(f"Error processing image generation task {task.task_id}: {exc}")
-                    await self.queue_service.update_task_status(
-                        task.task_id,
-                        TaskStatus.FAILED,
-                        error=str(exc)
-                    )
+                # Удаляем завершенные задачи из множества
+                task_handle.add_done_callback(self.active_tasks.discard)
             
             except Exception as exc:
                 logger.exception(f"Error in image generation worker: {exc}")
                 await asyncio.sleep(1)
     
+    async def _process_single_reply_task(self, task: Any) -> None:
+        """Обрабатывает одну задачу генерации ответа."""
+        if self.reply_semaphore is None:
+            raise RuntimeError("Worker not started")
+        async with self.reply_semaphore:  # Ограничиваем параллелизм
+            try:
+                logger.info(f"Processing reply generation task: {task.task_id}")
+                
+                # Извлекаем данные задачи
+                system_prompt = task.data.get("system_prompt")
+                history = task.data.get("history", [])
+                dialog_id = task.data.get("dialog_id")
+                user_message = task.data.get("user_message")
+                
+                if not system_prompt:
+                    raise ValueError("System prompt is required")
+                
+                # Генерируем ответ
+                venice_client = VeniceClient()
+                try:
+                    reply_text = await venice_client.generate_reply(system_prompt, history)
+                    
+                    # Сохраняем сообщение в БД
+                    if dialog_id and user_message:
+                        async with get_session() as session:
+                            # Добавляем сообщение пользователя, если его еще нет
+                            # (может быть уже добавлено в handlers)
+                            # Добавляем ответ ассистента
+                            await add_message(
+                                session,
+                                dialog_id=dialog_id,
+                                role="assistant",
+                                content=reply_text,
+                            )
+                            await session.commit()
+                    
+                    # Сохраняем результат
+                    await self.queue_service.update_task_status(
+                        task.task_id,
+                        TaskStatus.COMPLETED,
+                        result={
+                            "reply": reply_text,
+                            "dialog_id": dialog_id,
+                        }
+                    )
+                    
+                    logger.info(f"Reply generation completed: {task.task_id}")
+                finally:
+                    await venice_client.close()
+            
+            except Exception as exc:
+                logger.exception(f"Error processing reply generation task {task.task_id}: {exc}")
+                await self.queue_service.update_task_status(
+                    task.task_id,
+                    TaskStatus.FAILED,
+                    error=str(exc)
+                )
+    
     async def _process_generate_reply_tasks(self) -> None:
-        """Обрабатывает задачи генерации ответов AI."""
+        """Обрабатывает задачи генерации ответов AI параллельно."""
         while self.running:
             try:
+                # Извлекаем задачу из очереди
                 task = await self.queue_service.dequeue_task(
                     TaskType.GENERATE_REPLY,
                     timeout=1
@@ -138,58 +233,12 @@ class QueueWorker:
                     await asyncio.sleep(0.1)
                     continue
                 
-                logger.info(f"Processing reply generation task: {task.task_id}")
+                # Запускаем обработку задачи параллельно
+                task_handle = asyncio.create_task(self._process_single_reply_task(task))
+                self.active_tasks.add(task_handle)
                 
-                try:
-                    # Извлекаем данные задачи
-                    system_prompt = task.data.get("system_prompt")
-                    history = task.data.get("history", [])
-                    dialog_id = task.data.get("dialog_id")
-                    user_message = task.data.get("user_message")
-                    
-                    if not system_prompt:
-                        raise ValueError("System prompt is required")
-                    
-                    # Генерируем ответ
-                    venice_client = VeniceClient()
-                    try:
-                        reply_text = await venice_client.generate_reply(system_prompt, history)
-                        
-                        # Сохраняем сообщение в БД
-                        if dialog_id and user_message:
-                            async with get_session() as session:
-                                # Добавляем сообщение пользователя, если его еще нет
-                                # (может быть уже добавлено в handlers)
-                                # Добавляем ответ ассистента
-                                await add_message(
-                                    session,
-                                    dialog_id=dialog_id,
-                                    role="assistant",
-                                    content=reply_text,
-                                )
-                                await session.commit()
-                        
-                        # Сохраняем результат
-                        await self.queue_service.update_task_status(
-                            task.task_id,
-                            TaskStatus.COMPLETED,
-                            result={
-                                "reply": reply_text,
-                                "dialog_id": dialog_id,
-                            }
-                        )
-                        
-                        logger.info(f"Reply generation completed: {task.task_id}")
-                    finally:
-                        await venice_client.close()
-                
-                except Exception as exc:
-                    logger.exception(f"Error processing reply generation task {task.task_id}: {exc}")
-                    await self.queue_service.update_task_status(
-                        task.task_id,
-                        TaskStatus.FAILED,
-                        error=str(exc)
-                    )
+                # Удаляем завершенные задачи из множества
+                task_handle.add_done_callback(self.active_tasks.discard)
             
             except Exception as exc:
                 logger.exception(f"Error in reply generation worker: {exc}")
