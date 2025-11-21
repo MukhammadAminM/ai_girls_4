@@ -1449,7 +1449,7 @@ async def handle_top_up_diamonds_callback(callback: CallbackQuery) -> None:
         "💎 Алмазы\n\n"
         "Выберите количество:\n\n"
         "💎 50 алмазов\n"
-        "   🎁 БЕСПЛАТНО (временно)\n\n"
+        "   💰 50 ⭐ ($0.99)\n\n"
         "💎 150 алмазов\n"
         "   💰 125 ⭐ ($2.49)\n\n"
         "💎 500 алмазов\n"
@@ -1462,7 +1462,7 @@ async def handle_top_up_diamonds_callback(callback: CallbackQuery) -> None:
     
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="💎 50 алмазов (БЕСПЛАТНО)", callback_data="buy_diamonds:50:1")],
+            [InlineKeyboardButton(text="💎 50 алмазов (50⭐)", callback_data="buy_diamonds:50:50")],
             [InlineKeyboardButton(text="💎 150 алмазов (125⭐)", callback_data="buy_diamonds:150:125")],
             [InlineKeyboardButton(text="💎 500 алмазов (350⭐)", callback_data="buy_diamonds:500:350")],
             [InlineKeyboardButton(text="💎 1 200 алмазов (750⭐)", callback_data="buy_diamonds:1200:750")],
@@ -1499,7 +1499,7 @@ async def handle_top_up_energy_callback(callback: CallbackQuery) -> None:
         "⚡ Энергия\n\n"
         "Выберите количество:\n\n"
         "⚡ 50 энергии\n"
-        "   💰 1 ⭐ (временно)\n\n"
+        "   💰 50 ⭐ ($0.99)\n\n"
         "⚡ 150 энергии\n"
         "   💰 125 ⭐ ($2.49)\n\n"
         "⚡ 500 энергии\n"
@@ -1512,7 +1512,7 @@ async def handle_top_up_energy_callback(callback: CallbackQuery) -> None:
     
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⚡ 50 энергии (1⭐)", callback_data="buy_energy:50:1")],
+            [InlineKeyboardButton(text="⚡ 50 энергии (50⭐)", callback_data="buy_energy:50:50")],
             [InlineKeyboardButton(text="⚡ 150 энергии (125⭐)", callback_data="buy_energy:150:125")],
             [InlineKeyboardButton(text="⚡ 500 энергии (350⭐)", callback_data="buy_energy:500:350")],
             [InlineKeyboardButton(text="⚡ 1 200 энергии (750⭐)", callback_data="buy_energy:1200:750")],
@@ -1553,46 +1553,7 @@ async def handle_buy_diamonds_callback(callback: CallbackQuery) -> None:
     
     await callback.answer()
     
-    # Временно: 50 алмазов бесплатно (начисляем напрямую без инвойса)
-    if amount == 50 and stars == 1:
-        async with get_session() as session:
-            from app.repositories.user_profile import add_diamonds
-            from app.repositories.payments import create_payment
-            
-            # Начисляем алмазы
-            await add_diamonds(session, user_id=callback.from_user.id, amount=amount)
-            
-            # Записываем "бесплатную" покупку в базу (0 stars, но с amount=50)
-            await create_payment(
-                session,
-                user_id=callback.from_user.id,
-                payment_type="diamonds",
-                amount_stars=0,  # Бесплатно
-                amount_usd=0.0,
-                diamonds_received=amount,
-                energy_received=0,
-            )
-            
-            await session.commit()
-            
-            # Получаем обновленное количество алмазов
-            from app.repositories.user_profile import get_user_diamonds
-            new_diamonds = await get_user_diamonds(session, user_id=callback.from_user.id)
-        
-        # Редактируем сообщение с ценами на сообщение об успешном пополнении
-        success_text = (
-            f"✅ Вы успешно пополнили баланс!\n\n"
-            f"💎 Получено: {amount} алмазов (бесплатно)\n"
-            f"💎 Теперь у тебя: {new_diamonds} алмазов"
-        )
-        try:
-            await callback.message.edit_text(success_text)
-        except Exception as exc:
-            logging.getLogger(__name__).warning(f"Не удалось отредактировать сообщение: {exc}")
-            await callback.message.answer(success_text)
-        return
-    
-    # Для остальных сумм создаем инвойс
+    # Создаем инвойс для покупки алмазов
     # Сохраняем message_id сообщения с ценами в payload для последующего редактирования
     price_message_id = callback.message.message_id
     title = f"Покупка {amount} алмазов"
