@@ -71,11 +71,15 @@ class Live3DImageClient:
         
         logger.info("Запуск браузера для получения cf_clearance cookie...")
         chrome_options = Options()
-        # Убираем headless, чтобы Cloudflare не блокировал
-        # chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
+        # Headless режим для работы на сервере без GUI
+        chrome_options.add_argument("--headless=new")  # Новый headless режим Chrome
+        chrome_options.add_argument("--no-sandbox")  # Необходимо для работы в Docker/сервере
+        chrome_options.add_argument("--disable-dev-shm-usage")  # Избегает проблем с /dev/shm
+        chrome_options.add_argument("--disable-gpu")  # Отключаем GPU в headless режиме
+        chrome_options.add_argument("--disable-software-rasterizer")  # Отключаем софтверный растеризатор
+        chrome_options.add_argument("--window-size=1920,1080")  # Устанавливаем размер окна
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
@@ -217,9 +221,15 @@ class Live3DImageClient:
     async def _generate_with_selenium(self, payload: dict, cf_clearance: str | None) -> bytes:
         """Генерирует изображение используя Selenium (как в test_live3d_api.py)"""
         chrome_options = Options()
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
+        # Headless режим для работы на сервере без GUI
+        chrome_options.add_argument("--headless=new")  # Новый headless режим Chrome
+        chrome_options.add_argument("--no-sandbox")  # Необходимо для работы в Docker/сервере
+        chrome_options.add_argument("--disable-dev-shm-usage")  # Избегает проблем с /dev/shm
+        chrome_options.add_argument("--disable-gpu")  # Отключаем GPU в headless режиме
+        chrome_options.add_argument("--disable-software-rasterizer")  # Отключаем софтверный растеризатор
+        chrome_options.add_argument("--window-size=1920,1080")  # Устанавливаем размер окна
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
