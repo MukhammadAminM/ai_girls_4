@@ -12,19 +12,54 @@
 
 ### 1. Установка Chrome/Chromium для headless режима
 
+#### Вариант A: Установка Google Chrome (рекомендуется)
+
 ```bash
 # Обновляем пакеты
 sudo apt update
 
-# Устанавливаем Chrome (рекомендуется)
-wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-sudo apt update
-sudo apt install -y google-chrome-stable
+# Устанавливаем зависимости
+sudo apt install -y wget gnupg
 
-# ИЛИ устанавливаем Chromium (альтернатива)
-# sudo apt install -y chromium-browser chromium-chromedriver
+# Добавляем ключ Google
+wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+
+# Добавляем репозиторий Google Chrome
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+
+# Обновляем список пакетов
+sudo apt update
+
+# Устанавливаем Chrome
+sudo apt install -y google-chrome-stable
 ```
+
+#### Вариант B: Установка Chromium (проще, но может быть менее стабильным)
+
+```bash
+# Обновляем пакеты
+sudo apt update
+
+# Устанавливаем Chromium и ChromeDriver
+sudo apt install -y chromium-browser chromium-chromedriver
+
+# Создаем симлинк для chromedriver (если нужно)
+sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/local/bin/chromedriver
+```
+
+#### Вариант C: Использование только cloudscraper (НЕ требует браузер!)
+
+Если не хотите устанавливать браузер, можно использовать только `cloudscraper`, который не требует GUI:
+
+```bash
+# Устанавливаем cloudscraper
+pip install cloudscraper
+
+# В .env файле убедитесь, что USE_LIVE3D=true
+# Код автоматически будет использовать cloudscraper вместо Selenium
+```
+
+**Рекомендация:** Начните с варианта C (cloudscraper), так как он не требует установки браузера и работает быстрее.
 
 ### 2. Установка ChromeDriver
 
